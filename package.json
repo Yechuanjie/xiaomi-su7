@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "dat.gui": "^0.7.9",
+    "kokomi.js": "^1.9.99",
     "three": "^0.163.0",
     "vue": "^3.4.21"
   },
@@ -25,6 +26,7 @@
     "sass-loader": "^14.1.1",
     "typescript": "^5.2.2",
     "unplugin-auto-import": "^0.17.5",
+    "url": "^0.11.3",
     "vite": "^5.2.0",
     "vue-tsc": "^2.0.6"
   }

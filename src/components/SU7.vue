@@ -11,18 +11,20 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module'
 import * as dat from 'dat.gui'
+import { loadResourceByName } from '@/utils/resources'
 
 const su7Ref = ref<HTMLDivElement>()
-
+let animationFrame = 0
 const init = () => {
   let mixer: THREE.AnimationMixer
 
   const clock = new THREE.Clock()
   const container = su7Ref.value!
-
   const stats = new Stats()
   container.appendChild(stats.dom)
+
   // 渲染器 添加抗锯齿
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(window.devicePixelRatio)
@@ -36,9 +38,11 @@ const init = () => {
   scene.background = new THREE.Color(0xbfe3dd)
   scene.environment = pmremGenerator.fromScene(new RoomEnvironment(renderer), 0.04).texture
   // 添加相机
-  const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 100)
-  camera.position.set(-10, 0, 0)
-  // camera.lookAt(0, 0, 0)
+  const camera = new THREE.PerspectiveCamera(33.4, window.innerWidth / window.innerHeight, 1, 100)
+  camera.updateProjectionMatrix()
+  camera.position.set(0, 0.8, -11)
+  const lookAt = new THREE.Vector3(0, 0.8, 0)
+  camera.lookAt(lookAt)
 
   // 添加控制器
   const controls = new OrbitControls(camera, renderer.domElement)
@@ -54,7 +58,7 @@ const init = () => {
   // gui.add(controls,'zoomSpeed',0,0.05)
 
   // 添加网格地面
-  const gridHelper = new THREE.GridHelper(10, 10) // 创建一个网格帮助器，参数为网格的宽度和高度
+  const gridHelper = new THREE.GridHelper(20, 20) // 创建一个网格帮助器，参数为网格的宽度和高度
   gridHelper.material.transparent = true // 开启网格帮助器的透明度
   gridHelper.material.opacity = 0.5 // 设置网格帮助器的透明度
   scene.add(gridHelper)
@@ -65,13 +69,14 @@ const init = () => {
   const dracoLoader = new DRACOLoader()
   dracoLoader.setDecoderPath('/public/jsm/draco/gltf/')
   loader.setDRACOLoader(dracoLoader)
+  // Meshopt压缩的glTF模型
+  loader.setMeshoptDecoder(MeshoptDecoder)
 
   loader.load(
-    '/public/models/su7/source/SU7.glb',
+    '/public/models/mesh/sm_car.gltf',
     gltf => {
       const model = gltf.scene
-      // model.position.set(1, 1, 1)
-      // model.scale.set(0.5, 0.5, 0.5)
+      initModel(model)
       scene.add(model)
       mixer = new THREE.AnimationMixer(model)
       animate()
@@ -82,6 +87,40 @@ const init = () => {
     }
   )
 
+  let wheelModel: THREE.Object3D<THREE.Object3DEventMap> = null!
+
+  const initModel = async (model: THREE.Group<THREE.Object3DEventMap>) => {
+    console.info('model', model)
+    const modelParts: THREE.Object3D<THREE.Object3DEventMap>[] = []
+    model.traverse(obj => {
+      modelParts.push(obj)
+    })
+
+    console.info('modelParts', modelParts)
+
+    wheelModel = modelParts[35]
+
+    const aoMap = await loadResourceByName('ut_car_body_ao')
+    // const body = modelParts[2] as THREE.Mesh
+    // const bodyMat = body.material as THREE.MeshStandardMaterial
+    // bodyMat.color = new THREE.Color('#26d6e9')
+    // @ts-ignore
+    modelParts.forEach((item: THREE.Mesh) => {
+      if (item.isMesh) {
+        const mat = item.material as THREE.MeshStandardMaterial
+        aoMap && (mat.aoMap = aoMap)
+      }
+    })
+  }
+
+  const rotateWheel = () => {
+    wheelModel?.children.forEach(item => {
+      item.rotateZ(-1 * 0.03)
+    })
+    //控制网格的z轴移动
+    gridHelper.position.x += -1 * 0.03
+  }
+
   window.onresize = function () {
     camera.aspect = window.innerWidth / window.innerHeight
     camera.updateProjectionMatrix()
@@ -89,17 +128,24 @@ const init = () => {
   }
 
   const animate = () => {
-    requestAnimationFrame(animate)
+    animationFrame = requestAnimationFrame(animate)
     const delta = clock.getDelta()
     mixer.update(delta)
     controls.update()
     stats.update()
+
+    rotateWheel()
+
     renderer.render(scene, camera)
   }
 }
 
 onMounted(() => {
   init()
+})
+
+onUnmounted(() => {
+  cancelAnimationFrame(animationFrame)
 })
 </script>
 <style lang="scss" scoped></style>
