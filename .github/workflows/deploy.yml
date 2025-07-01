@@ -1,0 +1,63 @@
+# Action's Name
+name: AutoDeploy
+
+on:
+  push:
+    branches:
+      - master # master提交触发action
+  workflow_dispatch:
+
+env:
+  # git user
+  GIT_USER: yechuanjie
+  # git email
+  GIT_EMAIL: 1102684711@qq.com
+  # 仓库路径
+  GIT_DEPLOY_REPO: Yechuanjie/xiaomi-su7
+  # 打包后推送的分支
+  GIT_DEPLOY_BRANCH: gh-pages
+
+jobs:
+  build:
+    name: Build on node ${{ matrix.node_version }} and ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    if: github.event.repository.owner.id == github.event.sender.id
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node_version: [18.x]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # If your repository depends on submodule, please see: https://github.com/actions/checkout
+          submodules: recursive
+
+      - name: 使用Node.js版本：${{ matrix.node_version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node_version }}
+
+      - name: 安装依赖并打包
+        run: |
+          yarn
+          yarn build
+
+      - name: 输出当前目录
+        run: |
+          ls
+
+      - name: 输出上级当前目录
+        run: |
+          cd ..
+          ls
+
+      - name: 部署到GitHub
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository-name: ${{ env.GIT_DEPLOY_REPO }}
+          branch: ${{ env.GIT_DEPLOY_BRANCH }} # 推送到gh_pages
+          folder: public # 部署文件夹
+          commit-message: 更新版本
