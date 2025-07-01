@@ -6,7 +6,7 @@ import * as path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: './',
+  base: './xiaomi-su7',
   resolve: {
     // @ts-ignore
     alias: [{ find: '@', replacement: path.resolve(__dirname, 'src') }]
