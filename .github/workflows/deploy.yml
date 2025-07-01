@@ -15,7 +15,10 @@ env:
   # 仓库路径
   GIT_DEPLOY_REPO: Yechuanjie/xiaomi-su7
   # 打包后推送的分支
-  GIT_DEPLOY_BRANCH: gh-pages
+  GIT_DEPLOY_BRANCH:
+    gh-pages
+    # 构建后的文件夹
+  BUILD_FOLDER: dist
 
 jobs:
   build:
@@ -48,16 +51,11 @@ jobs:
         run: |
           ls
 
-      - name: 输出上级当前目录
-        run: |
-          cd ..
-          ls
-
       - name: 部署到GitHub
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository-name: ${{ env.GIT_DEPLOY_REPO }}
           branch: ${{ env.GIT_DEPLOY_BRANCH }} # 推送到gh_pages
-          folder: public # 部署文件夹
+          folder: ${{ env.BUILD_FOLDER }} # 部署文件夹
           commit-message: 更新版本
