@@ -41,7 +41,7 @@ jobs:
 
       - name: 安装依赖并打包
         run: |
-          yarn
+          yarn install
           yarn build
 
       - name: 输出当前目录
