@@ -55,25 +55,19 @@ export const resources = [
     name: 'ut_env_light',
     type: 'hdrTexture',
     path: '/models/texture/t_env_light.hdr'
+  },
+  {
+    name: 'decal',
+    type: 'texture',
+    path: '/models/texture/decal.png'
   }
 ]
 
-export const loadResourceByName = async (name: string): Promise<THREE.Texture | undefined> => {
+export const loadResourceAsnyc = async (name: string) => {
   const item = resources.find(resource => resource.name === name)
-  // 加载item path对应的资源
-  if (item) {
-    const textureLoader = new THREE.TextureLoader()
-    textureLoader.load(
-      item.path,
-      texture => {
-        return Promise.resolve(texture)
-      },
-      () => {},
-      () => {
-        return Promise.reject('加载失败')
-      }
-    )
-  } else {
-    return Promise.reject('请检查资源是否存在')
+  if (!item) {
+    return Promise.reject(new Error('Resource not found'))
   }
+  const textureLoader = new THREE.TextureLoader()
+  return textureLoader.loadAsync(item!.path)
 }

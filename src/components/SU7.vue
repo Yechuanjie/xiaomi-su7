@@ -1,10 +1,9 @@
 <template>
-  <div>
-    <div ref="su7Ref"></div>
-  </div>
+  <div ref="su7Ref"></div>
 </template>
 <script setup lang="ts" name="">
 import * as THREE from 'three'
+
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
@@ -12,35 +11,40 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module'
-import * as dat from 'dat.gui'
-import { loadResourceByName } from '@/utils/resources'
 
 const su7Ref = ref<HTMLDivElement>()
-let animationFrame = 0
-const init = () => {
-  let mixer: THREE.AnimationMixer
+const emits = defineEmits<{
+  (e: 'ready'): void
+}>()
 
-  const clock = new THREE.Clock()
+let animationFrame = 0
+const setting = {
+  speed: 0.09 // 轮子转动速度
+}
+
+const init = () => {
   const container = su7Ref.value!
+
+  // 帧率显示
   const stats = new Stats()
   container.appendChild(stats.dom)
 
   // 渲染器 添加抗锯齿
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(window.devicePixelRatio)
-  renderer.setClearColor('#000') // 设置画面颜色
   renderer.setSize(window.innerWidth, window.innerHeight)
   container.appendChild(renderer.domElement)
 
-  const pmremGenerator = new THREE.PMREMGenerator(renderer)
   // 添加场景
+  const pmremGenerator = new THREE.PMREMGenerator(renderer)
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0xbfe3dd)
-  scene.environment = pmremGenerator.fromScene(new RoomEnvironment(renderer), 0.04).texture
+  scene.environment = pmremGenerator.fromScene(new RoomEnvironment(renderer), 0.02).texture
+
   // 添加相机
   const camera = new THREE.PerspectiveCamera(33.4, window.innerWidth / window.innerHeight, 1, 100)
   camera.updateProjectionMatrix()
-  camera.position.set(0, 0.8, -11)
+  camera.position.set(6, -2, -8)
   const lookAt = new THREE.Vector3(0, 0.8, 0)
   camera.lookAt(lookAt)
 
@@ -53,14 +57,8 @@ const init = () => {
   controls.maxPolarAngle = 1.35 // 最大绕y轴角度
   controls.zoomSpeed = 1 // 缩放速度
 
-  // const gui = new dat.GUI();
-  // gui.add(controls,'rotateSpeed',0,0.05)
-  // gui.add(controls,'zoomSpeed',0,0.05)
-
-  // 添加网格地面
-  const gridHelper = new THREE.GridHelper(20, 20) // 创建一个网格帮助器，参数为网格的宽度和高度
-  gridHelper.material.transparent = true // 开启网格帮助器的透明度
-  gridHelper.material.opacity = 0.5 // 设置网格帮助器的透明度
+  // 创建动态网格地面
+  const { gridHelper, moveGrid } = createDynamicGrid()
   scene.add(gridHelper)
 
   // 加载su7模型
@@ -74,12 +72,14 @@ const init = () => {
 
   loader.load(
     '/public/models/mesh/sm_car.gltf',
-    gltf => {
+    async gltf => {
       const model = gltf.scene
-      initModel(model)
       scene.add(model)
-      mixer = new THREE.AnimationMixer(model)
-      animate()
+      initModel(model)
+      setTimeout(() => {
+        emits('ready')
+        animate()
+      }, 2000)
     },
     undefined,
     e => {
@@ -87,38 +87,43 @@ const init = () => {
     }
   )
 
+  // 模型遍历子对象
+  const modelParts: THREE.Object3D<THREE.Object3DEventMap>[] = []
+  // 轮子
   let wheelModel: THREE.Object3D<THREE.Object3DEventMap> = null!
+  // 车身材质
+  let bodyMat: THREE.MeshStandardMaterial | null = null
 
+  // 模型初始化
   const initModel = async (model: THREE.Group<THREE.Object3DEventMap>) => {
-    console.info('model', model)
-    const modelParts: THREE.Object3D<THREE.Object3DEventMap>[] = []
-    model.traverse(obj => {
-      modelParts.push(obj)
-    })
-
+    // 平铺模型
+    model.traverse(obj => modelParts.push(obj))
     console.info('modelParts', modelParts)
 
     wheelModel = modelParts[35]
 
-    const aoMap = await loadResourceByName('ut_car_body_ao')
-    // const body = modelParts[2] as THREE.Mesh
-    // const bodyMat = body.material as THREE.MeshStandardMaterial
-    // bodyMat.color = new THREE.Color('#26d6e9')
+    const body = modelParts[2] as THREE.Mesh
+    bodyMat = body.material as THREE.MeshStandardMaterial
+
+    // 海湾蓝
+    bodyMat.color = new THREE.Color('#26d6e9')
+
+    // 雅灰
+    // bodyMat.color = new THREE.Color('#888888')
+
     // @ts-ignore
     modelParts.forEach((item: THREE.Mesh) => {
       if (item.isMesh) {
         const mat = item.material as THREE.MeshStandardMaterial
-        aoMap && (mat.aoMap = aoMap)
+        mat.aoMap = null
       }
     })
   }
 
   const rotateWheel = () => {
     wheelModel?.children.forEach(item => {
-      item.rotateZ(-1 * 0.03)
+      item.rotateZ(-1 * setting.speed)
     })
-    //控制网格的z轴移动
-    gridHelper.position.x += -1 * 0.03
   }
 
   window.onresize = function () {
@@ -129,15 +134,32 @@ const init = () => {
 
   const animate = () => {
     animationFrame = requestAnimationFrame(animate)
-    const delta = clock.getDelta()
-    mixer.update(delta)
     controls.update()
     stats.update()
 
     rotateWheel()
+    moveGrid()
 
     renderer.render(scene, camera)
   }
+}
+
+const createDynamicGrid = () => {
+  const size = 20 // 网格大小
+  const divisions = 20 // 分割数
+  const gridHelper = new THREE.GridHelper(size, divisions)
+  gridHelper.material.transparent = true
+  gridHelper.material.opacity = 0.5
+
+  // 动态移动网格
+  const moveGrid = () => {
+    gridHelper.position.x -= setting.speed // 根据速度移动网格
+    if (gridHelper.position.x < -size / 10) {
+      gridHelper.position.x = 0 // 重置位置
+    }
+  }
+
+  return { gridHelper, moveGrid }
 }
 
 onMounted(() => {
