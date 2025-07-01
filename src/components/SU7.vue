@@ -65,13 +65,17 @@ const init = () => {
   const loader = new GLTFLoader()
   // 解压loader
   const dracoLoader = new DRACOLoader()
-  dracoLoader.setDecoderPath('/jsm/draco/gltf/')
+
+  const dracoUrl = new URL('/jsm/draco/gltf/', import.meta.url).href
+  const carUrl = new URL('/models/mesh/sm_car.gltf', import.meta.url).href
+
+  dracoLoader.setDecoderPath(dracoUrl)
   loader.setDRACOLoader(dracoLoader)
   // Meshopt压缩的glTF模型
   loader.setMeshoptDecoder(MeshoptDecoder)
 
   loader.load(
-    '/models/mesh/sm_car.gltf',
+    carUrl,
     async gltf => {
       const model = gltf.scene
       scene.add(model)

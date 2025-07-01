@@ -5,24 +5,21 @@ import AutoImport from 'unplugin-auto-import/vite'
 import * as path from 'path'
 
 // https://vitejs.dev/config/
-export default ({ mode }: ConfigEnv) => {
-  return defineConfig({
-    // base: mode == 'development' ? '/' : '/xiaomi-su7/',
-    base: mode == 'development' ? '/' : '/xiaomi-su7/',
-    resolve: {
-      // @ts-ignore
-      alias: [{ find: '@', replacement: path.resolve(__dirname, 'src') }]
-    },
-    plugins: [
-      vue(),
-      AutoImport({
-        resolvers: [],
-        imports: ['vue'],
-        dts: 'src/types/auto-imports.d.ts',
-        eslintrc: {
-          enabled: true
-        }
-      })
-    ]
-  })
-}
+export default defineConfig({
+  base: '/xiaomi-su7/',
+  resolve: {
+    // @ts-ignore
+    alias: [{ find: '@', replacement: path.resolve(__dirname, 'src') }]
+  },
+  plugins: [
+    vue(),
+    AutoImport({
+      resolvers: [],
+      imports: ['vue'],
+      dts: 'src/types/auto-imports.d.ts',
+      eslintrc: {
+        enabled: true
+      }
+    })
+  ]
+})
