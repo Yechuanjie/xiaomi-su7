@@ -1,25 +1,28 @@
-import { defineConfig } from 'vite'
+import { defineConfig, ConfigEnv, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 // @ts-ignore
 import * as path from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  base: './xiaomi-su7',
-  resolve: {
-    // @ts-ignore
-    alias: [{ find: '@', replacement: path.resolve(__dirname, 'src') }]
-  },
-  plugins: [
-    vue(),
-    AutoImport({
-      resolvers: [],
-      imports: ['vue'],
-      dts: 'src/types/auto-imports.d.ts',
-      eslintrc: {
-        enabled: true
-      }
-    })
-  ]
-})
+export default ({ mode }: ConfigEnv) => {
+  return defineConfig({
+    // base: mode == 'development' ? '/' : '/xiaomi-su7/',
+    base: mode == 'development' ? '/' : '/xiaomi-su7/',
+    resolve: {
+      // @ts-ignore
+      alias: [{ find: '@', replacement: path.resolve(__dirname, 'src') }]
+    },
+    plugins: [
+      vue(),
+      AutoImport({
+        resolvers: [],
+        imports: ['vue'],
+        dts: 'src/types/auto-imports.d.ts',
+        eslintrc: {
+          enabled: true
+        }
+      })
+    ]
+  })
+}
