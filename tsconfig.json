@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-   "target": "esnext",
+    "target": "esnext",
     "useDefineForClassFields": true,
     "module": "esnext",
     "moduleResolution": "node",
@@ -12,6 +12,7 @@
     "esModuleInterop": true,
     "noImplicitAny": false,
     "isolatedModules": true,
+    "skipLibCheck": true,
     "lib": [
       "esnext",
       "dom"
