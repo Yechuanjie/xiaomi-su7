@@ -13,6 +13,7 @@
     "noImplicitAny": false,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "outDir": "./dist",
     "lib": [
       "esnext",
       "dom"

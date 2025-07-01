@@ -19,28 +19,5 @@ export default defineConfig({
         enabled: true
       }
     })
-  ],
-  css: {
-    preprocessorOptions: {
-      scss: {
-        // 注入全局样式变量，可以直接在组件中使用变量或mixin
-        additionalData: `@use "./src/assets/style/variable.scss" as *;`
-      }
-    },
-    postcss: {
-      plugins: [
-        {
-          postcssPlugin: 'internal:charset-removal',
-          AtRule: {
-            // 移除打包时 scss 的 @charset "UTF-8" 警告
-            charset: atRule => {
-              if (atRule.name === 'charset') {
-                atRule.remove()
-              }
-            }
-          }
-        }
-      ]
-    }
-  }
+  ]
 })
