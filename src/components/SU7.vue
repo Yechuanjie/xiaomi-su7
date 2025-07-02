@@ -173,7 +173,7 @@ const init = async () => {
 
 const createTree = (scene: THREE.Scene) => {
   // 加载树模型并摆放在马路两侧
-  const treeUrl = new URL('/models/texture/maple_tree/scene.gltf', import.meta.url).href
+  const treeUrl = new URL('/models/maple_tree/scene.gltf', import.meta.url).href
   const treeLoader = new GLTFLoader()
   treeLoader.load(
     treeUrl,
@@ -230,7 +230,7 @@ const createRealRoad = (scene: THREE.Scene) => {
 
   // 2. 加载道路纹理
   const textureLoader = new THREE.TextureLoader()
-  const roadTextureUrl = new URL('/models/texture/highway/highway-lanes_albedo.png', import.meta.url).href
+  const roadTextureUrl = new URL('/models/highway/highway-lanes_albedo.png', import.meta.url).href
   const roadTexture = textureLoader.load(roadTextureUrl)
 
   // 设置纹理重复
