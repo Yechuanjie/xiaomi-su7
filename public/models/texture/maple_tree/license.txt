@@ -1,0 +1,11 @@
+Model Information:
+* title:	Maple tree
+* source:	https://sketchfab.com/3d-models/maple-tree-4b27adcf92f644bdabf8ecc6c5bef399
+* author:	atrodler (https://sketchfab.com/atrodler)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Maple tree" (https://sketchfab.com/3d-models/maple-tree-4b27adcf92f644bdabf8ecc6c5bef399) by atrodler (https://sketchfab.com/atrodler) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

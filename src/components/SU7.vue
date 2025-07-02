@@ -28,7 +28,7 @@ const setting = {
   // 轮胎半径(米)
   wheelRadius: 0.3,
   // 纹理重复
-  textureRepeatLength: 4,
+  textureRepeatLength: 8,
   // 假设60fps, 每帧时间约0.016秒
   fpsTime: 0.016
 }
@@ -69,9 +69,13 @@ const init = async () => {
   controls.zoomSpeed = 1 // 缩放速度
 
   // 创建动态网格地面
-  // const { road, moveRoad } = createDynamicGrid()
-  const { road, moveRoad } = createRealRoad()
-  scene.add(road)
+  // const { moveRoad } = createDynamicGrid(scene)
+
+  // 创建马路
+  const { moveRoad } = createRealRoad(scene)
+
+  // // 创建树
+  // createTree(scene)
 
   // 加载su7模型
   const loader = new GLTFLoader()
@@ -122,7 +126,10 @@ const init = async () => {
     bodyMat = body.material as THREE.MeshStandardMaterial
 
     // 海湾蓝
-    bodyMat.color = new THREE.Color('#26d6e9')
+    // bodyMat.color = new THREE.Color('#26d6e9')
+
+    // 璀璨洋红
+    // bodyMat.color = new THREE.Color('#A62058')
 
     // 雅灰
     // bodyMat.color = new THREE.Color('#888888')
@@ -164,7 +171,39 @@ const init = async () => {
   }
 }
 
-const createDynamicGrid = () => {
+const createTree = (scene: THREE.Scene) => {
+  // 加载树模型并摆放在马路两侧
+  const treeUrl = new URL('/models/texture/maple_tree/scene.gltf', import.meta.url).href
+  const treeLoader = new GLTFLoader()
+  treeLoader.load(
+    treeUrl,
+    gltf => {
+      const treeModel = gltf.scene
+      treeModel.scale.set(0.04, 0.04, 0.04) // 可根据实际模型调整大小
+      // 在马路两侧循环摆放多棵树
+      const treeCount = 8
+      const roadWidth = 20
+      const sideOffset = roadWidth / 2 + 1.5 // 树离马路边1.5米
+      for (let i = 0; i < treeCount; i++) {
+        // 左侧
+        const leftTree = treeModel.clone()
+        leftTree.position.set(-sideOffset, 0, i * 8 - treeCount * 4)
+        scene.add(leftTree)
+        // 右侧
+        const rightTree = treeModel.clone()
+        rightTree.position.set(sideOffset, 0, i * 8 - treeCount * 4)
+        scene.add(rightTree)
+      }
+    },
+    undefined,
+    err => {
+      console.error('树模型加载失败', err)
+    }
+  )
+}
+
+// 创建网格地面
+const createDynamicGrid = (scene: THREE.Scene) => {
   const size = 20 // 网格大小
   const divisions = 20 // 分割数
   const road = new THREE.GridHelper(size, divisions)
@@ -179,12 +218,15 @@ const createDynamicGrid = () => {
     }
   }
 
-  return { road, moveRoad }
+  scene.add(road)
+
+  return { moveRoad }
 }
 
-const createRealRoad = () => {
+// 创建马路
+const createRealRoad = (scene: THREE.Scene) => {
   // 1. 创建道路平面几何体 - 调整大小以适应场景
-  const roadGeometry = new THREE.PlaneGeometry(10, 24)
+  const roadGeometry = new THREE.PlaneGeometry(10, 10 * setting.textureRepeatLength)
 
   // 2. 加载道路纹理
   const textureLoader = new THREE.TextureLoader()
@@ -201,10 +243,10 @@ const createRealRoad = () => {
   })
 
   const road = new THREE.Mesh(roadGeometry, roadMaterial)
-
+  // road.translateZ(2) // 平移
   road.rotation.x = -Math.PI / 2 // 使平面水平
   road.rotation.z = -Math.PI / 2 // 使平面垂直于z轴
-  road.position.y = -0.1 // 略微下沉避免z-fighting
+  // road.position.y = -0.1 // 略微下沉避免z-fighting
 
   const moveRoad = () => {
     const offset = (setting.speedRatio * setting.fpsTime) / setting.textureRepeatLength
@@ -214,7 +256,9 @@ const createRealRoad = () => {
     }
   }
 
-  return { road, moveRoad }
+  scene.add(road)
+
+  return { moveRoad }
 }
 
 onMounted(() => {
