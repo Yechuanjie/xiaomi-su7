@@ -60,6 +60,12 @@ export const resources = [
     name: 'decal',
     type: 'texture',
     path: '/models/texture/decal.png'
+  },
+
+  {
+    name: 'highway_lanes_albedo',
+    type: 'texture',
+    path: '/models/texture/highway/highway-lanes_albedo.png'
   }
 ]
 
@@ -69,5 +75,6 @@ export const loadResourceAsnyc = async (name: string) => {
     return Promise.reject(new Error('Resource not found'))
   }
   const textureLoader = new THREE.TextureLoader()
-  return textureLoader.loadAsync(item!.path)
+  const url = new URL(item.path, import.meta.url).href
+  return textureLoader.loadAsync(url)
 }

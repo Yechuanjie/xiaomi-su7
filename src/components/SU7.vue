@@ -19,10 +19,21 @@ const emits = defineEmits<{
 
 let animationFrame = 0
 const setting = {
-  speed: 0.09 // 轮子转动速度
+  // 速度 km/h
+  speed: 60,
+  // 速度换算系数 转换为米/秒
+  get speedRatio() {
+    return (this.speed / 3600) * 1000
+  },
+  // 轮胎半径(米)
+  wheelRadius: 0.3,
+  // 纹理重复
+  textureRepeatLength: 4,
+  // 假设60fps, 每帧时间约0.016秒
+  fpsTime: 0.016
 }
 
-const init = () => {
+const init = async () => {
   const container = su7Ref.value!
 
   // 帧率显示
@@ -58,8 +69,9 @@ const init = () => {
   controls.zoomSpeed = 1 // 缩放速度
 
   // 创建动态网格地面
-  const { gridHelper, moveGrid } = createDynamicGrid()
-  scene.add(gridHelper)
+  // const { road, moveRoad } = createDynamicGrid()
+  const { road, moveRoad } = createRealRoad()
+  scene.add(road)
 
   // 加载su7模型
   const loader = new GLTFLoader()
@@ -125,8 +137,12 @@ const init = () => {
   }
 
   const rotateWheel = () => {
+    //  v = ωr，ω = v/r
+    // 角速度 = 线速度/半径
+    const angularVelocity = setting.speedRatio / setting.wheelRadius
     wheelModel?.children.forEach(item => {
-      item.rotateZ(-1 * setting.speed)
+      // 每帧旋转角度 = 角速度 * 帧时间
+      item.rotateZ(-angularVelocity * setting.fpsTime)
     })
   }
 
@@ -142,7 +158,7 @@ const init = () => {
     stats.update()
 
     rotateWheel()
-    moveGrid()
+    moveRoad()
 
     renderer.render(scene, camera)
   }
@@ -151,19 +167,54 @@ const init = () => {
 const createDynamicGrid = () => {
   const size = 20 // 网格大小
   const divisions = 20 // 分割数
-  const gridHelper = new THREE.GridHelper(size, divisions)
-  gridHelper.material.transparent = true
-  gridHelper.material.opacity = 0.5
+  const road = new THREE.GridHelper(size, divisions)
+  road.material.transparent = true
+  road.material.opacity = 0.5
 
   // 动态移动网格
-  const moveGrid = () => {
-    gridHelper.position.x -= setting.speed // 根据速度移动网格
-    if (gridHelper.position.x < -size / 10) {
-      gridHelper.position.x = 0 // 重置位置
+  const moveRoad = () => {
+    road.position.x -= setting.speedRatio * setting.fpsTime
+    if (road.position.x < -size / 10) {
+      road.position.x = 0 // 重置位置
     }
   }
 
-  return { gridHelper, moveGrid }
+  return { road, moveRoad }
+}
+
+const createRealRoad = () => {
+  // 1. 创建道路平面几何体 - 调整大小以适应场景
+  const roadGeometry = new THREE.PlaneGeometry(10, 24)
+
+  // 2. 加载道路纹理
+  const textureLoader = new THREE.TextureLoader()
+  const roadTextureUrl = new URL('/models/texture/highway/highway-lanes_albedo.png', import.meta.url).href
+  const roadTexture = textureLoader.load(roadTextureUrl)
+
+  // 设置纹理重复
+  roadTexture.wrapS = THREE.RepeatWrapping
+  roadTexture.wrapT = THREE.RepeatWrapping
+  roadTexture.repeat.set(1, setting.textureRepeatLength) // 设置纹理重复次数
+
+  const roadMaterial = new THREE.MeshStandardMaterial({
+    map: roadTexture
+  })
+
+  const road = new THREE.Mesh(roadGeometry, roadMaterial)
+
+  road.rotation.x = -Math.PI / 2 // 使平面水平
+  road.rotation.z = -Math.PI / 2 // 使平面垂直于z轴
+  road.position.y = -0.1 // 略微下沉避免z-fighting
+
+  const moveRoad = () => {
+    const offset = (setting.speedRatio * setting.fpsTime) / setting.textureRepeatLength
+    roadTexture.offset.y += offset
+    if (roadTexture.offset.y > 1) {
+      roadTexture.offset.y = 0
+    }
+  }
+
+  return { road, moveRoad }
 }
 
 onMounted(() => {
