@@ -3,11 +3,9 @@
 </template>
 <script setup lang="ts" name="">
 import * as THREE from 'three'
-
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
-
 import { getModelSize, loadGltf, loadTexture } from '@/utils/resource'
 
 const su7Ref = ref<HTMLDivElement>()
@@ -75,16 +73,11 @@ const initScene = () => {
 
   // 渲染器 添加抗锯齿
   const renderer = new THREE.WebGLRenderer({
-    antialias: true
-    // powerPreference: 'high-performance'
+    antialias: true,
+    powerPreference: 'high-performance'
   })
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(window.innerWidth, window.innerHeight)
-  // // 优化阴影
-  // renderer.shadowMap.enabled = true
-  // renderer.shadowMap.type = THREE.PCFSoftShadowMap
-  // renderer.shadowMap.autoUpdate = false // 仅在需要时更新阴影
-
   container.appendChild(renderer.domElement)
 
   // 添加场景
@@ -94,9 +87,10 @@ const initScene = () => {
   scene.environment = pmremGenerator.fromScene(new RoomEnvironment(renderer), 0.02).texture
 
   // 添加相机
-  const camera = new THREE.PerspectiveCamera(33.4, window.innerWidth / window.innerHeight, 0.1, 1000)
+  const camera = new THREE.PerspectiveCamera(33.4, window.innerWidth / window.innerHeight, 0.01, 1000)
   camera.updateProjectionMatrix()
-  camera.position.set(6, 9, -16)
+  camera.position.set(6, 8, -8)
+  // camera.position.set(6, 200, -10)
   const lookAt = new THREE.Vector3(0, 0.8, 0)
   camera.lookAt(lookAt)
 
@@ -176,53 +170,55 @@ const initTree = async (
     draco: true
   })
 
-  const treeModel = treeGltf.scene
-  treeModel.scale.set(0.4, 0.4, 0.4)
+  // const grassGltf = await loadGltf({
+  //   path: '/models/stone_grass/scene.gltf',
+  //   draco: true
+  // })
 
-  // 创建一个组来容纳所有树
-  const treeGroup = new THREE.Group()
+  const treeModel = treeGltf.scene
+  // const grassModel = grassGltf.scene
+  treeModel.scale.set(0.4, 0.4, 0.4)
+  // grassModel.scale.set(4,4,4)
 
   const roadWidth = road.geometry.parameters.width
   const roadLength = road.geometry.parameters.height
 
-  const treeCount = 8
-  const treeSpacing = roadLength / treeCount
+  //把左右两侧的树作为一组
+  const sideTree = new THREE.Group()
+  const leftTree = treeModel.clone()
+  const rightTree = treeModel.clone()
+  // const grassModelLeft = grassModel.clone()
+  // const grassModelRight = grassModel.clone()
+  leftTree.position.set(-roadWidth / 2, 0, 0)
+  rightTree.position.set(roadWidth / 2, 0, 0)
+  // grassModelLeft.position.set(-roadWidth / 2, -0.1, 0)
+  // grassModelRight.position.set(roadWidth / 2, -0.1, 0)
+  sideTree.add(leftTree)
+  sideTree.add(rightTree)
+  // sideTree.add(grassModelLeft)
+  // sideTree.add(grassModelRight)
+  // 使树组与道路方向一致
+  sideTree.rotation.y = Math.PI / 2
 
-  for (let i = 0; i < treeCount; i++) {
-    // 左侧树
-    const leftTree = treeModel.clone()
-    leftTree.position.set(-roadWidth / 2 - 0.5, 0, -roadLength / 2 + i * treeSpacing)
-    treeGroup.add(leftTree)
+  const treeGroupCount = 8
+  const treeGroup: THREE.Group<THREE.Object3DEventMap>[] = []
 
-    // 右侧树
-    const rightTree = treeModel.clone()
-    rightTree.position.set(roadWidth / 2 + 0.5, 0, -roadLength / 2 + i * treeSpacing)
-    treeGroup.add(rightTree)
+  for (let i = 0; i <= treeGroupCount; i++) {
+    const treeGroupClone = sideTree.clone()
+    treeGroupClone.position.set(-roadLength / 2 + i * (roadLength / treeGroupCount), 0, 0)
+    treeGroup.push(treeGroupClone)
   }
 
-  // 旋转整个树组,使其与道路方向一致
-  treeGroup.rotation.y = Math.PI / 2
-
-  // 将树组添加到场景
-  scene.add(treeGroup)
+  scene.add(...treeGroup)
 
   const moveTreeGroup = () => {
     const offset = setting.speedRatio * setting.fpsTime
-    treeGroup.position.x -= offset
-
-    // 计算马路的一半长度
-    const halfRoadLength = roadLength / 2
-
-    // 当树组移动超过一定距离时，提前重置位置
-    if (treeGroup.position.x < -halfRoadLength / 2) {
-      // 重置位置时，设置到略微超前的位置，避免突然出现
-      treeGroup.position.x += halfRoadLength
-    }
-
-    // 为了确保树不会超出马路范围，添加边界检查
-    if (treeGroup.position.x > halfRoadLength) {
-      treeGroup.position.x = halfRoadLength
-    }
+    treeGroup.forEach(tree => {
+      tree.position.x -= offset
+      if (tree.position.x <= -roadLength / 2) {
+        tree.position.x = roadLength / 2
+      }
+    })
   }
 
   return { treeGroup, moveTreeGroup }
