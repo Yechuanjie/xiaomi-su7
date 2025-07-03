@@ -8,9 +8,7 @@ import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
 
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module'
+import { getModelSize, loadGltf, loadTexture } from '@/utils/resource'
 
 const su7Ref = ref<HTMLDivElement>()
 const emits = defineEmits<{
@@ -34,6 +32,41 @@ const setting = {
 }
 
 const init = async () => {
+  const { scene, stats, controls, renderer, camera } = initScene()
+
+  // 加载su7模型
+  const { su7Model, rotateWheel } = await initSu7Model(scene)
+
+  // 创建马路
+  const { road, moveRoad } = await initRoad(scene)
+
+  // 创建树
+  const { treeGroup, moveTreeGroup } = await initTree(scene, road)
+
+  emits('ready')
+
+  const animate = () => {
+    animationFrame = requestAnimationFrame(animate)
+    controls.update()
+    stats.update()
+
+    rotateWheel()
+    moveRoad()
+    moveTreeGroup()
+
+    renderer.render(scene, camera)
+  }
+
+  animate()
+
+  window.onresize = function () {
+    camera.aspect = window.innerWidth / window.innerHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(window.innerWidth, window.innerHeight)
+  }
+}
+
+const initScene = () => {
   const container = su7Ref.value!
 
   // 帧率显示
@@ -41,21 +74,29 @@ const init = async () => {
   container.appendChild(stats.dom)
 
   // 渲染器 添加抗锯齿
-  const renderer = new THREE.WebGLRenderer({ antialias: true })
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true
+    // powerPreference: 'high-performance'
+  })
   renderer.setPixelRatio(window.devicePixelRatio)
   renderer.setSize(window.innerWidth, window.innerHeight)
+  // // 优化阴影
+  // renderer.shadowMap.enabled = true
+  // renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  // renderer.shadowMap.autoUpdate = false // 仅在需要时更新阴影
+
   container.appendChild(renderer.domElement)
 
   // 添加场景
   const pmremGenerator = new THREE.PMREMGenerator(renderer)
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0xbfe3dd)
+  scene.background = new THREE.Color(0xeaeaea)
   scene.environment = pmremGenerator.fromScene(new RoomEnvironment(renderer), 0.02).texture
 
   // 添加相机
-  const camera = new THREE.PerspectiveCamera(33.4, window.innerWidth / window.innerHeight, 1, 100)
+  const camera = new THREE.PerspectiveCamera(33.4, window.innerWidth / window.innerHeight, 0.1, 1000)
   camera.updateProjectionMatrix()
-  camera.position.set(6, -2, -8)
+  camera.position.set(6, 9, -16)
   const lookAt = new THREE.Vector3(0, 0.8, 0)
   camera.lookAt(lookAt)
 
@@ -68,44 +109,16 @@ const init = async () => {
   controls.maxPolarAngle = 1.35 // 最大绕y轴角度
   controls.zoomSpeed = 1 // 缩放速度
 
-  // 创建动态网格地面
-  // const { moveRoad } = createDynamicGrid(scene)
+  return { scene, camera, renderer, controls, stats, pmremGenerator }
+}
 
-  // 创建马路
-  const { moveRoad } = createRealRoad(scene)
+const initSu7Model = async (scene: THREE.Scene) => {
+  const su7Gltf = await loadGltf({
+    path: '/models/mesh/sm_car.gltf',
+    draco: true
+  })
 
-  // // 创建树
-  // createTree(scene)
-
-  // 加载su7模型
-  const loader = new GLTFLoader()
-  // 解压loader
-  const dracoLoader = new DRACOLoader()
-
-  const dracoUrl = new URL('/jsm/draco/gltf/', import.meta.url).href
-  const carUrl = new URL('/models/mesh/sm_car.gltf', import.meta.url).href
-
-  dracoLoader.setDecoderPath(dracoUrl)
-  loader.setDRACOLoader(dracoLoader)
-  // Meshopt压缩的glTF模型
-  loader.setMeshoptDecoder(MeshoptDecoder)
-
-  loader.load(
-    carUrl,
-    async gltf => {
-      const model = gltf.scene
-      scene.add(model)
-      initModel(model)
-      setTimeout(() => {
-        emits('ready')
-        animate()
-      }, 2000)
-    },
-    undefined,
-    e => {
-      console.error(e)
-    }
-  )
+  const su7Model = su7Gltf.scene
 
   // 模型遍历子对象
   const modelParts: THREE.Object3D<THREE.Object3DEventMap>[] = []
@@ -114,34 +127,30 @@ const init = async () => {
   // 车身材质
   let bodyMat: THREE.MeshStandardMaterial | null = null
 
-  // 模型初始化
-  const initModel = async (model: THREE.Group<THREE.Object3DEventMap>) => {
-    // 平铺模型
-    model.traverse(obj => modelParts.push(obj))
-    console.info('modelParts', modelParts)
+  // 平铺模型
+  su7Model.traverse(obj => modelParts.push(obj))
 
-    wheelModel = modelParts[35]
+  wheelModel = modelParts[35]
 
-    const body = modelParts[2] as THREE.Mesh
-    bodyMat = body.material as THREE.MeshStandardMaterial
+  const body = modelParts[2] as THREE.Mesh
+  bodyMat = body.material as THREE.MeshStandardMaterial
 
-    // 海湾蓝
-    // bodyMat.color = new THREE.Color('#26d6e9')
+  // 海湾蓝
+  // bodyMat.color = new THREE.Color('#26d6e9')
 
-    // 璀璨洋红
-    // bodyMat.color = new THREE.Color('#A62058')
+  // 璀璨洋红
+  // bodyMat.color = new THREE.Color('#A62058')
 
-    // 雅灰
-    // bodyMat.color = new THREE.Color('#888888')
+  // 雅灰
+  // bodyMat.color = new THREE.Color('#888888')
 
-    // @ts-ignore
-    modelParts.forEach((item: THREE.Mesh) => {
-      if (item.isMesh) {
-        const mat = item.material as THREE.MeshStandardMaterial
-        mat.aoMap = null
-      }
-    })
-  }
+  // @ts-ignore
+  modelParts.forEach((item: THREE.Mesh) => {
+    if (item.isMesh) {
+      const mat = item.material as THREE.MeshStandardMaterial
+      mat.aoMap = null
+    }
+  })
 
   const rotateWheel = () => {
     //  v = ωr，ω = v/r
@@ -153,85 +162,79 @@ const init = async () => {
     })
   }
 
-  window.onresize = function () {
-    camera.aspect = window.innerWidth / window.innerHeight
-    camera.updateProjectionMatrix()
-    renderer.setSize(window.innerWidth, window.innerHeight)
-  }
+  scene.add(su7Model)
 
-  const animate = () => {
-    animationFrame = requestAnimationFrame(animate)
-    controls.update()
-    stats.update()
-
-    rotateWheel()
-    moveRoad()
-
-    renderer.render(scene, camera)
-  }
+  return { su7Model, rotateWheel }
 }
 
-const createTree = (scene: THREE.Scene) => {
-  // 加载树模型并摆放在马路两侧
-  const treeUrl = new URL('/models/maple_tree/scene.gltf', import.meta.url).href
-  const treeLoader = new GLTFLoader()
-  treeLoader.load(
-    treeUrl,
-    gltf => {
-      const treeModel = gltf.scene
-      treeModel.scale.set(0.04, 0.04, 0.04) // 可根据实际模型调整大小
-      // 在马路两侧循环摆放多棵树
-      const treeCount = 8
-      const roadWidth = 20
-      const sideOffset = roadWidth / 2 + 1.5 // 树离马路边1.5米
-      for (let i = 0; i < treeCount; i++) {
-        // 左侧
-        const leftTree = treeModel.clone()
-        leftTree.position.set(-sideOffset, 0, i * 8 - treeCount * 4)
-        scene.add(leftTree)
-        // 右侧
-        const rightTree = treeModel.clone()
-        rightTree.position.set(sideOffset, 0, i * 8 - treeCount * 4)
-        scene.add(rightTree)
-      }
-    },
-    undefined,
-    err => {
-      console.error('树模型加载失败', err)
+const initTree = async (
+  scene: THREE.Scene,
+  road: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial, THREE.Object3DEventMap>
+) => {
+  const treeGltf = await loadGltf({
+    path: '/models/palm_tree/scene.gltf',
+    draco: true
+  })
+
+  const treeModel = treeGltf.scene
+  treeModel.scale.set(0.4, 0.4, 0.4)
+
+  // 创建一个组来容纳所有树
+  const treeGroup = new THREE.Group()
+
+  const roadWidth = road.geometry.parameters.width
+  const roadLength = road.geometry.parameters.height
+
+  const treeCount = 8
+  const treeSpacing = roadLength / treeCount
+
+  for (let i = 0; i < treeCount; i++) {
+    // 左侧树
+    const leftTree = treeModel.clone()
+    leftTree.position.set(-roadWidth / 2 - 0.5, 0, -roadLength / 2 + i * treeSpacing)
+    treeGroup.add(leftTree)
+
+    // 右侧树
+    const rightTree = treeModel.clone()
+    rightTree.position.set(roadWidth / 2 + 0.5, 0, -roadLength / 2 + i * treeSpacing)
+    treeGroup.add(rightTree)
+  }
+
+  // 旋转整个树组,使其与道路方向一致
+  treeGroup.rotation.y = Math.PI / 2
+
+  // 将树组添加到场景
+  scene.add(treeGroup)
+
+  const moveTreeGroup = () => {
+    const offset = setting.speedRatio * setting.fpsTime
+    treeGroup.position.x -= offset
+
+    // 计算马路的一半长度
+    const halfRoadLength = roadLength / 2
+
+    // 当树组移动超过一定距离时，提前重置位置
+    if (treeGroup.position.x < -halfRoadLength / 2) {
+      // 重置位置时，设置到略微超前的位置，避免突然出现
+      treeGroup.position.x += halfRoadLength
     }
-  )
-}
 
-// 创建网格地面
-const createDynamicGrid = (scene: THREE.Scene) => {
-  const size = 20 // 网格大小
-  const divisions = 20 // 分割数
-  const road = new THREE.GridHelper(size, divisions)
-  road.material.transparent = true
-  road.material.opacity = 0.5
-
-  // 动态移动网格
-  const moveRoad = () => {
-    road.position.x -= setting.speedRatio * setting.fpsTime
-    if (road.position.x < -size / 10) {
-      road.position.x = 0 // 重置位置
+    // 为了确保树不会超出马路范围，添加边界检查
+    if (treeGroup.position.x > halfRoadLength) {
+      treeGroup.position.x = halfRoadLength
     }
   }
 
-  scene.add(road)
-
-  return { moveRoad }
+  return { treeGroup, moveTreeGroup }
 }
 
 // 创建马路
-const createRealRoad = (scene: THREE.Scene) => {
-  // 1. 创建道路平面几何体 - 调整大小以适应场景
+const initRoad = async (scene: THREE.Scene) => {
+  // 创建道路平面几何体 - 调整大小以适应场景
   const roadGeometry = new THREE.PlaneGeometry(10, 10 * setting.textureRepeatLength)
 
-  // 2. 加载道路纹理
-  const textureLoader = new THREE.TextureLoader()
-  const roadTextureUrl = new URL('/models/highway/highway-lanes_albedo.png', import.meta.url).href
-  const roadTexture = textureLoader.load(roadTextureUrl)
+  // 加载道路纹理
+  const roadTexture = await loadTexture({ path: '/models/highway/highway-lanes_albedo.png' })
 
   // 设置纹理重复
   roadTexture.wrapS = THREE.RepeatWrapping
@@ -243,10 +246,9 @@ const createRealRoad = (scene: THREE.Scene) => {
   })
 
   const road = new THREE.Mesh(roadGeometry, roadMaterial)
-  // road.translateZ(2) // 平移
   road.rotation.x = -Math.PI / 2 // 使平面水平
   road.rotation.z = -Math.PI / 2 // 使平面垂直于z轴
-  // road.position.y = -0.1 // 略微下沉避免z-fighting
+  road.position.y = -0.1 // 略微下沉避免z-fighting
 
   const moveRoad = () => {
     const offset = (setting.speedRatio * setting.fpsTime) / setting.textureRepeatLength
@@ -258,7 +260,7 @@ const createRealRoad = (scene: THREE.Scene) => {
 
   scene.add(road)
 
-  return { moveRoad }
+  return { road, moveRoad }
 }
 
 onMounted(() => {

@@ -7,3 +7,8 @@ declare module '*.vue' {
 }
 
 interface Window {}
+
+interface ImportMetaEnv {
+  /** 上下文环境 */
+  readonly VITE_BASE_URL: string
+}

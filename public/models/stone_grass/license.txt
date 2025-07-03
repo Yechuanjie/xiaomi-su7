@@ -1,0 +1,11 @@
+Model Information:
+* title:	Stones And Grass
+* source:	https://sketchfab.com/3d-models/stones-and-grass-e73544a280c6418f918402d3e131e05b
+* author:	grewe.juergen (https://sketchfab.com/grewe.juergen)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Stones And Grass" (https://sketchfab.com/3d-models/stones-and-grass-e73544a280c6418f918402d3e131e05b) by grewe.juergen (https://sketchfab.com/grewe.juergen) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
