@@ -169,15 +169,8 @@ const initTree = async (
     draco: true
   })
 
-  // const grassGltf = await loadGltf({
-  //   path: '/models/stone_grass/scene.gltf',
-  //   draco: true
-  // })
-
   const treeModel = treeGltf.scene
-  // const grassModel = grassGltf.scene
   treeModel.scale.set(0.4, 0.4, 0.4)
-  // grassModel.scale.set(4,4,4)
 
   const roadWidth = road.geometry.parameters.width
   const roadLength = road.geometry.parameters.height
@@ -186,16 +179,11 @@ const initTree = async (
   const sideTree = new THREE.Group()
   const leftTree = treeModel.clone()
   const rightTree = treeModel.clone()
-  // const grassModelLeft = grassModel.clone()
-  // const grassModelRight = grassModel.clone()
+
   leftTree.position.set(-roadWidth / 2, 0, 0)
   rightTree.position.set(roadWidth / 2, 0, 0)
-  // grassModelLeft.position.set(-roadWidth / 2, -0.1, 0)
-  // grassModelRight.position.set(roadWidth / 2, -0.1, 0)
   sideTree.add(leftTree)
   sideTree.add(rightTree)
-  // sideTree.add(grassModelLeft)
-  // sideTree.add(grassModelRight)
   // 使树组与道路方向一致
   sideTree.rotation.y = Math.PI / 2
 
