@@ -89,8 +89,7 @@ const initScene = () => {
   // 添加相机
   const camera = new THREE.PerspectiveCamera(33.4, window.innerWidth / window.innerHeight, 0.01, 1000)
   camera.updateProjectionMatrix()
-  camera.position.set(6, 8, -8)
-  // camera.position.set(6, 200, -10)
+  camera.position.set(10, 8, -18)
   const lookAt = new THREE.Vector3(0, 0.8, 0)
   camera.lookAt(lookAt)
 
