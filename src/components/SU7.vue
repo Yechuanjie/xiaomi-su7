@@ -7,6 +7,7 @@ import Stats from 'three/examples/jsm/libs/stats.module'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
 import { getModelSize, loadGltf, loadTexture } from '@/utils/resource'
+import { carControlGUI } from '@/utils/gui'
 
 const su7Ref = ref<HTMLDivElement>()
 const emits = defineEmits<{
@@ -29,8 +30,31 @@ const setting = {
   fpsTime: 0.016
 }
 
+// 设置GUI事件监听器
+const setupGUIEventListeners = () => {
+  // 监听速度变化
+  carControlGUI.onSpeedChange((speed: number) => {
+    setting.speed = speed
+  })
+
+  // 监听车辆启动/停止
+  carControlGUI.onVehicleStart((isStarted: boolean) => {
+    console.log('Vehicle started:', isStarted)
+  })
+
+  carControlGUI.onVehicleStop((isStopped: boolean) => {
+    if (isStopped) {
+      setting.speed = 0
+    }
+  })
+}
+
 const init = async () => {
   const { scene, stats, controls, renderer, camera } = initScene()
+
+  // 显示GUI控制面板
+  carControlGUI.show()
+  carControlGUI.setSpeed(setting.speed)
 
   // 加载su7模型
   const { su7Model, rotateWheel } = await initSu7Model(scene)
@@ -40,6 +64,9 @@ const init = async () => {
 
   // 创建树
   const { treeGroup, moveTreeGroup } = await initTree(scene, road)
+
+  // 设置GUI事件监听器
+  setupGUIEventListeners()
 
   emits('ready')
 

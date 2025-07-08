@@ -9,13 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "dat.gui": "^0.7.9",
     "kokomi.js": "^1.9.99",
+    "lil-gui": "^0.20.0",
     "three": "^0.163.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {
-    "@types/dat.gui": "^0.7.13",
     "@types/node": "^24.0.10",
     "@types/three": "^0.163.0",
     "@vitejs/plugin-vue": "^5.0.4",
