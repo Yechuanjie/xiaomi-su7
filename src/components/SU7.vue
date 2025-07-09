@@ -63,7 +63,6 @@ const init = async () => {
 
   emits('ready')
 
-  // 显示GUI控制面板
   carControlGUI.show()
   carControlGUI.setSpeed(setting.speed)
   setupGUIEventListeners()

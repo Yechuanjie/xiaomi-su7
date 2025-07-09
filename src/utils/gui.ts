@@ -18,6 +18,8 @@ export class CarControlGUI {
       speed: 60
     }
 
+    // 先隐藏gui
+    this.gui.hide()
     this.initializeControls()
   }
 
