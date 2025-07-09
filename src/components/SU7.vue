@@ -52,10 +52,6 @@ const setupGUIEventListeners = () => {
 const init = async () => {
   const { scene, stats, controls, renderer, camera } = initScene()
 
-  // 显示GUI控制面板
-  carControlGUI.show()
-  carControlGUI.setSpeed(setting.speed)
-
   // 加载su7模型
   const { su7Model, rotateWheel } = await initSu7Model(scene)
 
@@ -65,10 +61,12 @@ const init = async () => {
   // 创建树
   const { treeGroup, moveTreeGroup } = await initTree(scene, road)
 
-  // 设置GUI事件监听器
-  setupGUIEventListeners()
-
   emits('ready')
+
+  // 显示GUI控制面板
+  carControlGUI.show()
+  carControlGUI.setSpeed(setting.speed)
+  setupGUIEventListeners()
 
   const animate = () => {
     animationFrame = requestAnimationFrame(animate)
