@@ -1,3 +1,5 @@
+
+
 ### **xiaomi-su7**
 
 小米 SU7 3D 模型演示
@@ -20,4 +22,10 @@ yarn dev
 
 ```sh
 yarn build
+```
+
+预览构建
+
+```sh
+yarn preview
 ```
