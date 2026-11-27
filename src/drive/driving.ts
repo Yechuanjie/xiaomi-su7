@@ -6,7 +6,7 @@ export const MAX_SPEED_KPH = 185
 const MAX_REVERSE_SPEED_KPH = 24
 export const TRAFFIC_CLEARANCE = 5.6
 export const TRAFFIC_LATERAL_CLEARANCE = 1.94
-export type CameraMode = 'orbit' | 'chase' | 'hood'
+export type CameraMode = 'orbit' | 'chase' | 'hood' | 'cockpit'
 export type DriveMode = 'free' | 'lap'
 export type DriveControl = 'accelerate' | 'reverse' | 'brake' | 'left' | 'right'
 

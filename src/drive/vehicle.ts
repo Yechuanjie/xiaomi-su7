@@ -77,6 +77,14 @@ export class Vehicle {
     }
   }
 
+  setCockpitView(active: boolean): void {
+    const side = active ? THREE.DoubleSide : THREE.FrontSide
+    if (this.paint.side === side) return
+    this.paint.side = side
+    this.paint.shadowSide = active ? THREE.BackSide : null
+    this.paint.needsUpdate = true
+  }
+
   pose(frame: RoadFrame, speed: number, delta: number, drift: number): void {
     const { forward, point } = frame
     this.object.position.copy(point)

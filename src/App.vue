@@ -100,7 +100,7 @@
           </div>
         </div>
         <div class="dock-panel">
-          <div class="dock-heading"><h2>驾驶视角</h2><span class="orbit-hint" v-if="camera === 'orbit'">拖动旋转 · 滚轮缩放</span></div>
+          <div class="dock-heading"><h2>驾驶视角</h2><span class="orbit-hint" v-if="camera === 'orbit'">拖动旋转 · 滚轮缩放</span><span class="orbit-hint" v-else-if="camera === 'cockpit'">拖动看内饰</span></div>
           <div class="segment-control" role="group" aria-label="驾驶视角">
             <button v-for="option in cameras" :key="option.id" type="button" :aria-pressed="camera === option.id" :disabled="!ready" @click="selectCamera(option.id)">{{ option.label }}</button>
           </div>
@@ -171,7 +171,8 @@ const palettes = [
 const cameras: { id: CameraMode; label: string }[] = [
   { id: 'orbit', label: '环绕' },
   { id: 'chase', label: '跟车' },
-  { id: 'hood', label: '车头' }
+  { id: 'hood', label: '车头' },
+  { id: 'cockpit', label: '驾驶舱' }
 ]
 const times: { id: TimeOfDay; label: string; clock: string }[] = [
   { id: 'day', label: '白天', clock: '13:20' },

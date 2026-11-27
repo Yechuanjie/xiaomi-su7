@@ -36,6 +36,10 @@ const lighting = {
 }
 
 const SKY_ROTATION = -THREE.MathUtils.degToRad(101)
+// SU7 模型以 +X 为车头，驾驶座在 -Z 一侧。
+const DRIVER_EYE = new THREE.Vector3(0.14, 1.16, -0.34)
+const HOOD_EYE = new THREE.Vector3(1.4, 1.21, 0)
+const HOOD_TARGET = new THREE.Vector3(25, 1.19, 0)
 const asset = (name: string) => `models/coast/${name}`
 const loadSky = async (time: TimeOfDay) => {
   const texture = await new RGBELoader().loadAsync(getResourceUrl(asset(`${time}.hdr`)))
@@ -107,6 +111,9 @@ export class CoastScene {
   private readonly followTarget = new THREE.Vector3()
   private readonly orbitAnchor = new THREE.Vector3()
   private readonly orbitDelta = new THREE.Vector3()
+  private cockpitYaw = 0
+  private cockpitPitch = -0.06
+  private cockpitDrag: { pointer: number; x: number; y: number } | null = null
   private cameraMode: CameraMode = 'orbit'
   private timeOfDay: TimeOfDay = 'sunset'
   private timeRequest = 0
@@ -144,7 +151,10 @@ export class CoastScene {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    this.renderer.domElement.setAttribute('aria-label', '海岸公路 3D 场景，环绕视角可拖动')
+    this.renderer.domElement.setAttribute('aria-label', '海岸公路 3D 场景，可在环绕或驾驶舱视角拖动')
+    this.renderer.domElement.addEventListener('pointerdown', this.startCockpitDrag)
+    this.renderer.domElement.addEventListener('pointermove', this.moveCockpitDrag)
+    this.renderer.domElement.addEventListener('lostpointercapture', this.endCockpitDrag)
     container.append(this.renderer.domElement)
 
     const [asphalt, normal, grass, rock] = assets.textures
@@ -193,7 +203,13 @@ export class CoastScene {
   }
 
   setCamera(mode: CameraMode): void {
+    this.releaseCockpitDrag()
+    if (mode === 'cockpit') {
+      this.cockpitYaw = 0
+      this.cockpitPitch = -0.06
+    }
     this.cameraMode = mode
+    this.player.setCockpitView(mode === 'cockpit')
     this.repositionCamera()
   }
 
@@ -235,6 +251,10 @@ export class CoastScene {
     cancelAnimationFrame(this.animation)
     this.resize.disconnect()
     this.orbit.dispose()
+    this.releaseCockpitDrag()
+    this.renderer.domElement.removeEventListener('pointerdown', this.startCockpitDrag)
+    this.renderer.domElement.removeEventListener('pointermove', this.moveCockpitDrag)
+    this.renderer.domElement.removeEventListener('lostpointercapture', this.endCockpitDrag)
     this.sun.shadow.dispose()
     disposeObjects(this.scene)
     for (const texture of this.assets.textures) texture.dispose()
@@ -250,7 +270,57 @@ export class CoastScene {
     this.renderer.setSize(width, height)
     this.camera.aspect = width / height
     if (this.cameraMode === 'orbit') this.camera.fov = this.orbitFov()
+    if (this.cameraMode === 'cockpit') this.camera.fov = this.cockpitFov()
     this.camera.updateProjectionMatrix()
+  }
+
+  private cockpitFov(): number {
+    return this.camera.aspect < 1 ? 80 : 60
+  }
+
+  private readonly startCockpitDrag = (event: PointerEvent): void => {
+    if (this.cameraMode !== 'cockpit' || event.button !== 0 || this.cockpitDrag) return
+    this.renderer.domElement.setPointerCapture(event.pointerId)
+    this.cockpitDrag = { pointer: event.pointerId, x: event.clientX, y: event.clientY }
+  }
+
+  private readonly moveCockpitDrag = (event: PointerEvent): void => {
+    const drag = this.cockpitDrag
+    if (!drag || drag.pointer !== event.pointerId) return
+    this.cockpitYaw = THREE.MathUtils.clamp(this.cockpitYaw + (event.clientX - drag.x) * 0.005, -1.9, 1.9)
+    this.cockpitPitch = THREE.MathUtils.clamp(this.cockpitPitch - (event.clientY - drag.y) * 0.005, -0.95, 0.5)
+    drag.x = event.clientX
+    drag.y = event.clientY
+  }
+
+  private readonly endCockpitDrag = (event: PointerEvent): void => {
+    if (this.cockpitDrag?.pointer === event.pointerId) this.cockpitDrag = null
+  }
+
+  private releaseCockpitDrag(): void {
+    const drag = this.cockpitDrag
+    if (drag && this.renderer.domElement.hasPointerCapture(drag.pointer)) {
+      this.renderer.domElement.releasePointerCapture(drag.pointer)
+    }
+    this.cockpitDrag = null
+  }
+
+  private updateCockpitCamera(): void {
+    const horizontal = Math.cos(this.cockpitPitch)
+    this.cameraTarget.set(
+      Math.cos(this.cockpitYaw) * horizontal,
+      Math.sin(this.cockpitPitch),
+      Math.sin(this.cockpitYaw) * horizontal
+    ).add(DRIVER_EYE)
+    this.updateVehicleCamera(DRIVER_EYE, this.cameraTarget)
+  }
+
+  private updateVehicleCamera(eye: THREE.Vector3, target: THREE.Vector3): void {
+    const vehicle = this.player.object
+    vehicle.localToWorld(this.cameraTarget.copy(target))
+    vehicle.localToWorld(this.camera.position.copy(eye))
+    this.camera.up.set(0, 1, 0).applyQuaternion(vehicle.quaternion)
+    this.camera.lookAt(this.cameraTarget)
   }
 
   private orbitFov(): number {
@@ -287,25 +357,20 @@ export class CoastScene {
     this.scenery.windows.emissiveIntensity = time === 'night' ? 1.9 : 0
   }
 
-  private setDrivingCameraTargets(): void {
+  private setChaseCameraTargets(): void {
     const { point, forward, right } = this.carFrame
-    if (this.cameraMode === 'hood') {
-      this.cameraPosition.copy(point).addScaledVector(forward, 1.15)
-      this.cameraPosition.y += 1.32
-      this.cameraTarget.copy(point).addScaledVector(forward, 25)
-      this.cameraTarget.y += 1.33
-    } else {
-      this.cameraPosition.copy(point).addScaledVector(forward, -8.7).addScaledVector(right, 0.22)
-      this.cameraPosition.y += 3.54
-      this.cameraTarget.copy(point).addScaledVector(forward, 10)
-      this.cameraTarget.y += 1.03
-    }
+    this.cameraPosition.copy(point).addScaledVector(forward, -8.7).addScaledVector(right, 0.22)
+    this.cameraPosition.y += 3.54
+    this.cameraTarget.copy(point).addScaledVector(forward, 10)
+    this.cameraTarget.y += 1.03
   }
 
   private repositionCamera(): void {
     const { distance, lateral } = this.driving.state
     const { point, forward, right } = coastRoute.at(distance, this.carFrame, lateral)
     this.orbit.enabled = this.cameraMode === 'orbit'
+    this.camera.near = this.cameraMode === 'cockpit' ? 0.035 : 0.1
+    this.camera.up.set(0, 1, 0)
     if (this.cameraMode === 'orbit') {
       const portrait = this.camera.aspect < 1
       this.orbitAnchor.copy(point)
@@ -315,11 +380,17 @@ export class CoastScene {
       this.orbit.target.y += portrait ? 0.97 : 1.68
       this.camera.fov = this.orbitFov()
       this.orbit.update()
+    } else if (this.cameraMode === 'cockpit') {
+      this.camera.fov = this.cockpitFov()
+      this.updateCockpitCamera()
+    } else if (this.cameraMode === 'hood') {
+      this.camera.fov = 64
+      this.updateVehicleCamera(HOOD_EYE, HOOD_TARGET)
     } else {
-      this.setDrivingCameraTargets()
+      this.setChaseCameraTargets()
       this.camera.position.copy(this.cameraPosition)
       this.followTarget.copy(this.cameraTarget)
-      this.camera.fov = this.cameraMode === 'hood' ? 64 : 55
+      this.camera.fov = 55
       this.camera.lookAt(this.followTarget)
     }
     this.camera.updateProjectionMatrix()
@@ -371,12 +442,19 @@ export class CoastScene {
       this.orbit.target.add(this.orbitDelta)
       this.orbitAnchor.copy(this.carFrame.point)
       this.orbit.update()
+    } else if (this.cameraMode === 'cockpit') {
+      this.updateCockpitCamera()
     } else {
-      this.setDrivingCameraTargets()
-      const blend = 1 - Math.exp(-delta * (this.cameraMode === 'hood' ? 22 : 8.5))
-      this.camera.position.lerp(this.cameraPosition, blend)
-      this.followTarget.lerp(this.cameraTarget, blend)
-      this.camera.lookAt(this.followTarget)
+      if (this.cameraMode === 'hood') {
+        // 车头相机和本帧车身使用同一姿态，避免滞后时退入挡风玻璃。
+        this.updateVehicleCamera(HOOD_EYE, HOOD_TARGET)
+      } else {
+        this.setChaseCameraTargets()
+        const blend = 1 - Math.exp(-delta * 8.5)
+        this.camera.position.lerp(this.cameraPosition, blend)
+        this.followTarget.lerp(this.cameraTarget, blend)
+        this.camera.lookAt(this.followTarget)
+      }
       const fov = (this.cameraMode === 'hood' ? 64 : 55) + Math.abs(state.speed) * 0.16
       this.camera.fov = THREE.MathUtils.damp(this.camera.fov, fov, 5, delta)
       this.camera.updateProjectionMatrix()
