@@ -289,24 +289,30 @@ h1, h2, p { margin: 0; }
 .lap-restart { margin-top: 8px; padding: 5px 8px; border: 0; border-radius: 5px; background: var(--accent); color: #162010; font-size: 11px; font-weight: 700; }
 
 .touch-controls { display: none; }
-.load-state {
-  position: absolute;
+.loading-screen {
+  position: fixed;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 19px;
-  background: radial-gradient(ellipse at 65% 41%, #2d3b2a, #161e16 72%);
-  padding: 28px;
+  gap: 16px;
+  padding: 24px;
+  background: #000;
+  color: #fff;
   text-align: center;
-  font-size: 14px;
-  font-weight: 650;
-  z-index: 2;
+  z-index: 10;
 }
-.load-state p { color: #e1e9cc; line-height: 1.65; }
-.loading-orbit { width: 33px; height: 33px; border: 2px solid #d8f5812a; border-top-color: var(--accent); border-radius: 50%; animation: loading 0.9s linear infinite; }
-@keyframes loading { to { transform: rotate(360deg); } }
+.loading-screen-leave-active { transition: opacity 0.4s ease; pointer-events: none; }
+.loading-screen-leave-to { opacity: 0; }
+.loading-brand { font-size: 1.875rem; letter-spacing: 0.1em; white-space: pre; }
+.loading-brand span { animation: loading-letter 1.5s calc(var(--letter) * 0.2s) alternate infinite; }
+.loading-message { color: #bfc4b8; font-size: 13px; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.loading-progress { width: min(208px, 68vw); height: 5px; appearance: none; border: none; border-radius: 5px; background: #ffffff26; accent-color: var(--accent); }
+.loading-progress::-webkit-progress-bar { border-radius: 5px; background: #ffffff26; }
+.loading-progress::-webkit-progress-value { border-radius: 5px; background: var(--accent); transition: width 0.2s ease; }
+.loading-progress::-moz-progress-bar { border-radius: 5px; background: var(--accent); }
+@keyframes loading-letter { to { filter: blur(2px); } }
 
 .control-dock { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
 .dock-panel { min-width: 0; padding: 12px 14px 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }

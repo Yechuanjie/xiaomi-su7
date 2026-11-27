@@ -3,12 +3,13 @@
 </template>
 
 <script setup lang="ts">
-import { CoastScene } from '@/drive/coastScene'
+import { CoastScene, type SceneLoadingProgress } from '@/drive/coastScene'
 import type { DriveSnapshot } from '@/drive/driving'
 
 const emits = defineEmits<{
   ready: [scene: CoastScene]
   update: [state: DriveSnapshot]
+  progress: [progress: SceneLoadingProgress]
   error: [message: string]
 }>()
 
@@ -24,6 +25,8 @@ async function load() {
   try {
     const next = await CoastScene.create(viewport.value, state => {
       if (id === generation) emits('update', state)
+    }, progress => {
+      if (id === generation) emits('progress', progress)
     })
     if (id !== generation) {
       next.dispose()

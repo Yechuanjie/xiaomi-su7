@@ -1,8 +1,10 @@
 import { CatmullRomCurve3, Vector3 } from 'three'
 
 export const ROAD_HALF_WIDTH = 5.6
+export const ROAD_BLEND_DISTANCE = 30
 export const DRIVING_LANE = 2.35
 export const START_DISTANCE = 0
+const ROAD_CELL_SIZE = ROAD_BLEND_DISTANCE * 2
 
 const checkpoints = [
   [-10, 5.8, 24], [-15, 7, -81], [-7, 13, -166], [24, 23, -231],
@@ -15,6 +17,14 @@ export interface RoadFrame {
   point: Vector3
   forward: Vector3
   right: Vector3
+}
+
+interface RoadSegment {
+  start: Vector3
+  dx: number
+  dz: number
+  dy: number
+  inverseLength: number
 }
 
 export function roadFrame(): RoadFrame {
@@ -30,7 +40,8 @@ export class CoastRoute {
   readonly points: Vector3[]
   readonly length: number
   readonly step: number
-  private readonly segments: { start: Vector3; dx: number; dz: number; dy: number; inverseLength: number }[]
+  private readonly segments: RoadSegment[]
+  private readonly terrainCells = new Map<string, RoadSegment[]>()
 
   constructor() {
     const curve = new CatmullRomCurve3(checkpoints.map(([x, y, z]) => new Vector3(x, y, z)), true)
@@ -44,6 +55,22 @@ export class CoastRoute {
       const dz = end.z - start.z
       return { start, dx, dz, dy: end.y - start.y, inverseLength: 1 / (dx * dx + dz * dz) }
     })
+
+    for (const segment of this.segments) {
+      const { start, dx, dz } = segment
+      const minX = Math.floor((Math.min(start.x, start.x + dx) - ROAD_BLEND_DISTANCE) / ROAD_CELL_SIZE)
+      const maxX = Math.floor((Math.max(start.x, start.x + dx) + ROAD_BLEND_DISTANCE) / ROAD_CELL_SIZE)
+      const minZ = Math.floor((Math.min(start.z, start.z + dz) - ROAD_BLEND_DISTANCE) / ROAD_CELL_SIZE)
+      const maxZ = Math.floor((Math.max(start.z, start.z + dz) + ROAD_BLEND_DISTANCE) / ROAD_CELL_SIZE)
+      for (let x = minX; x <= maxX; x++) {
+        for (let z = minZ; z <= maxZ; z++) {
+          const key = `${x},${z}`
+          const candidates = this.terrainCells.get(key)
+          if (candidates) candidates.push(segment)
+          else this.terrainCells.set(key, [segment])
+        }
+      }
+    }
   }
 
   wrap(distance: number): number {
@@ -71,10 +98,15 @@ export class CoastRoute {
     return target
   }
 
-  nearest(x: number, z: number): { distance: number; height: number } {
-    let closestSquared = Infinity
+  nearestWithinBlend(x: number, z: number): { distance: number; height: number } | null {
+    const cell = `${Math.floor(x / ROAD_CELL_SIZE)},${Math.floor(z / ROAD_CELL_SIZE)}`
+    const candidates = this.terrainCells.get(cell)
+    if (!candidates) return null
+
+    const maxSquared = ROAD_BLEND_DISTANCE * ROAD_BLEND_DISTANCE
+    let closestSquared = maxSquared
     let height = 0
-    for (const { start, dx, dz, dy, inverseLength } of this.segments) {
+    for (const { start, dx, dz, dy, inverseLength } of candidates) {
       const sx = x - start.x
       const sz = z - start.z
       const t = Math.max(0, Math.min(1, (sx * dx + sz * dz) * inverseLength))
@@ -86,7 +118,7 @@ export class CoastRoute {
         height = start.y + dy * t
       }
     }
-    return { distance: Math.sqrt(closestSquared), height }
+    return closestSquared < maxSquared ? { distance: Math.sqrt(closestSquared), height } : null
   }
 }
 

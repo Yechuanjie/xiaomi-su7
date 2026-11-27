@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { CoastRoute, ROAD_HALF_WIDTH, smoothstep } from './route'
+import { CoastRoute, ROAD_BLEND_DISTANCE, ROAD_HALF_WIDTH, smoothstep } from './route'
 
 export const SEA_LEVEL = -0.7
 const HEADLAND_CENTER = 207
@@ -83,9 +83,10 @@ export class Landscape {
     const inland = THREE.MathUtils.lerp(bluff, hills, smoothstep(-5, 84, x))
     const coastalShelf = smoothstep(-18, 21, coast) * (1 - smoothstep(364, 495, z - Math.max(x, 0) * 0.32))
     const natural = THREE.MathUtils.lerp(-9.5, inland, coastalShelf)
-    const nearest = this.route.nearest(x, z)
+    const nearest = this.route.nearestWithinBlend(x, z)
+    if (!nearest) return natural
     const shoulder = nearest.height - 0.19 - Math.max(0, nearest.distance - ROAD_HALF_WIDTH) * 0.15
-    return THREE.MathUtils.lerp(shoulder, natural, smoothstep(ROAD_HALF_WIDTH + 2.4, 30, nearest.distance))
+    return THREE.MathUtils.lerp(shoulder, natural, smoothstep(ROAD_HALF_WIDTH + 2.4, ROAD_BLEND_DISTANCE, nearest.distance))
   }
 
   private addHeadland(x: number, z: number, width: number, depth: number, height: number): void {

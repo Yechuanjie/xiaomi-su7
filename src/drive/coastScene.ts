@@ -12,6 +12,10 @@ import { Vehicle } from './vehicle'
 
 export const DEFAULT_PAINT = '#239b9f'
 export type TimeOfDay = 'sunset' | 'day' | 'night'
+export interface SceneLoadingProgress {
+  completed: number
+  total: number
+}
 
 const lighting = {
   sunset: {
@@ -39,18 +43,35 @@ const loadSky = async (time: TimeOfDay) => {
   return texture
 }
 
-async function loadCoastAssets() {
+async function loadCoastAssets(onProgress: (progress: SceneLoadingProgress) => void) {
   const palmManager = new THREE.LoadingManager()
   palmManager.setURLModifier(url => {
     if (url.endsWith('/Plam_4_Trunk_baseColor.png')) return getResourceUrl(asset('palm-bark.webp'))
     if (url.endsWith('/Palm_4_Leaf_baseColor.png')) return getResourceUrl(asset('palm-leaf.webp'))
     return url
   })
+  const textureNames = ['asphalt.webp', 'asphalt-normal.webp', 'grass.webp', 'rock.webp']
+  const total = 3 + textureNames.length
+  let completed = 0
+  onProgress({ completed, total })
+
+  function track<T>(request: Promise<T>): Promise<T> {
+    return request.then(result => {
+      onProgress({ completed: ++completed, total })
+      return result
+    })
+  }
+
+  const modelStart = performance.now()
+  const carRequest = loadGltf({ path: '/models/mesh/sm_car.gltf' }).then(car => {
+    performance.measure('su7:model-load', { start: modelStart })
+    return car
+  })
   const [car, palm, sky, ...textures] = await Promise.all([
-    loadGltf({ path: '/models/mesh/sm_car.gltf', draco: true }),
-    loadGltf({ path: '/models/palm_tree/scene.gltf', manager: palmManager }),
-    loadSky('sunset'),
-    ...['asphalt.webp', 'asphalt-normal.webp', 'grass.webp', 'rock.webp'].map(name => loadTexture({ path: asset(name) }))
+    track(carRequest),
+    track(loadGltf({ path: '/models/palm_tree/scene.gltf', manager: palmManager })),
+    track(loadSky('sunset')),
+    ...textureNames.map(name => track(loadTexture({ path: asset(name) })))
   ] as const)
   for (const [index, texture] of textures.entries()) {
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping
@@ -95,9 +116,22 @@ export class CoastScene {
   private disposed = false
   private lastLateral = DRIVING_LANE
 
-  static async create(container: HTMLElement, onUpdate: (state: DriveSnapshot) => void): Promise<CoastScene> {
-    const assets = await loadCoastAssets()
-    return new CoastScene(container, assets, onUpdate)
+  static async create(
+    container: HTMLElement,
+    onUpdate: (state: DriveSnapshot) => void,
+    onProgress: (progress: SceneLoadingProgress) => void
+  ): Promise<CoastScene> {
+    const loadStart = performance.now()
+    const assets = await loadCoastAssets(onProgress)
+    // 先绘制「准备 3D 场景」，再开始同步的地形生成和首帧渲染。
+    if (document.visibilityState === 'visible') {
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    }
+    const renderStart = performance.now()
+    const scene = new CoastScene(container, assets, onUpdate)
+    performance.measure('su7:scene-setup', { start: renderStart })
+    performance.measure('su7:scene-ready', { start: loadStart })
+    return scene
   }
 
   private constructor(

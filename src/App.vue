@@ -1,6 +1,6 @@
 <template>
   <div ref="appShell" class="drive-app">
-    <header class="topbar">
+    <header class="topbar" :inert="!ready">
       <div class="topbar-content">
         <div class="brand" aria-label="SU7 Drive">
           <span class="brand-emblem" aria-hidden="true"><i></i></span>
@@ -21,9 +21,9 @@
       </div>
     </header>
 
-    <main class="drive-layout">
+    <main class="drive-layout" :inert="!ready">
       <section class="scene" :class="{ 'scene-driving': drivingStarted, 'scene-night': timeOfDay === 'night' }" aria-label="海岸公路">
-        <SU7 ref="sceneView" @ready="onReady" @update="onUpdate" @error="onLoadError"></SU7>
+        <SU7 ref="sceneView" @ready="onReady" @update="onUpdate" @progress="loadProgress = $event" @error="onLoadError"></SU7>
         <div class="scene-shade" aria-hidden="true"></div>
 
         <div class="scene-intro">
@@ -89,12 +89,6 @@
           </div>
         </div>
 
-        <div v-if="!ready" class="load-state" role="status">
-          <div v-if="!loadError" class="loading-orbit" aria-hidden="true"></div>
-          <p>{{ loadError || '正在载入海岸公路…' }}</p>
-          <button v-if="loadError" type="button" class="primary-button" @click="retry">重试</button>
-        </div>
-
         <div v-if="notice" class="scene-notice" role="status">{{ notice }}</div>
       </section>
 
@@ -128,6 +122,20 @@
       </footer>
     </main>
 
+    <Transition name="loading-screen">
+      <div v-if="!ready" class="loading-screen">
+        <p class="loading-brand" aria-label="Xiaomi SU7"><span v-for="(letter, index) in 'XIAOMI SU7'" :key="index" :style="{ '--letter': index }" aria-hidden="true">{{ letter }}</span></p>
+        <template v-if="loadError">
+          <p class="loading-message" role="alert">{{ loadError }}</p>
+          <button type="button" class="primary-button" @click="retry">重试</button>
+        </template>
+        <template v-else>
+          <p class="loading-message" role="status">{{ loadingMessage }}</p>
+          <progress v-if="loadProgress.total && loadProgress.completed < loadProgress.total" class="loading-progress" :value="loadProgress.completed" :max="loadProgress.total" aria-label="已加载的资源组"></progress>
+        </template>
+      </div>
+    </Transition>
+
     <dialog ref="guide" class="help-dialog">
       <form method="dialog">
         <div class="dialog-heading"><h2>操作指南</h2><button class="utility-button icon-button" type="submit" aria-label="关闭操作指南">×</button></div>
@@ -149,7 +157,7 @@
 <script setup lang="ts">
 import CoastMap from '@/components/CoastMap.vue'
 import SU7 from '@/components/SU7.vue'
-import { CoastScene, DEFAULT_PAINT, type TimeOfDay } from '@/drive/coastScene'
+import { CoastScene, DEFAULT_PAINT, type SceneLoadingProgress, type TimeOfDay } from '@/drive/coastScene'
 import { LAP_CHECKPOINTS, MAX_SPEED_KPH, type CameraMode, type DriveControl, type DriveMode, type DriveSnapshot } from '@/drive/driving'
 import { coastRoute, DRIVING_LANE, START_DISTANCE } from '@/drive/route'
 
@@ -182,6 +190,7 @@ const sceneView = ref<InstanceType<typeof SU7>>()
 const guide = ref<HTMLDialogElement>()
 const ready = ref(false)
 const loadError = ref('')
+const loadProgress = ref<SceneLoadingProgress>({ completed: 0, total: 0 })
 const mode = ref<DriveMode>('free')
 const drivingStarted = ref(false)
 const paused = ref(false)
@@ -201,6 +210,12 @@ const telemetry = shallowRef<DriveSnapshot>({
 })
 
 const routeLength = (coastRoute.length / 1000).toFixed(2)
+const loadingMessage = computed(() => {
+  const { completed, total } = loadProgress.value
+  if (total === 0) return '正在启动驾驶体验…'
+  if (completed === total) return '正在准备 3D 场景…'
+  return `正在加载车辆与场景资源 ${completed} / ${total}`
+})
 const speed = computed(() => Math.round(Math.abs(telemetry.value.speed) * 3.6))
 const displaySpeed = computed(() => String(speed.value).padStart(3, '0'))
 const drivingStatus = computed(() => {
@@ -248,6 +263,7 @@ function onLoadError(message: string) {
 
 function retry() {
   loadError.value = ''
+  loadProgress.value = { completed: 0, total: 0 }
   void sceneView.value?.load()
 }
 
