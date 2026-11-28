@@ -3,7 +3,7 @@
     <header class="topbar" :inert="!ready">
       <div class="topbar-content">
         <div class="brand" aria-label="SU7 Drive">
-          <span class="brand-emblem" aria-hidden="true"><i></i></span>
+          <img class="brand-emblem" :src="brandIconUrl" alt="" />
           <span class="brand-name">SU7 <b>DRIVE</b></span>
         </div>
         <nav class="mode-picker" aria-label="驾驶模式">
@@ -78,7 +78,7 @@
           <div class="route-progress"><span>路线进度</span><b>{{ Math.floor(routeProgress * 100) }}%</b></div>
         </aside>
 
-        <div v-if="ready" class="touch-controls" aria-label="触屏驾驶">
+        <div v-if="ready" class="touch-controls" aria-label="触屏驾驶" @contextmenu.prevent>
           <div>
             <button type="button" aria-label="向左转向" :class="{ 'touch-held': touchHeld.has('left') }" @pointerdown="holdControl($event, 'left')" @lostpointercapture="releaseControl('left')" @pointerup="releaseControl('left')" @pointercancel="releaseControl('left')">←</button>
             <button type="button" aria-label="向右转向" :class="{ 'touch-held': touchHeld.has('right') }" @pointerdown="holdControl($event, 'right')" @lostpointercapture="releaseControl('right')" @pointerup="releaseControl('right')" @pointercancel="releaseControl('right')">→</button>
@@ -131,7 +131,7 @@
         </template>
         <template v-else>
           <p class="loading-message" role="status">{{ loadingMessage }}</p>
-          <progress v-if="loadProgress.total && loadProgress.completed < loadProgress.total" class="loading-progress" :value="loadProgress.completed" :max="loadProgress.total" aria-label="已加载的资源组"></progress>
+          <progress class="loading-progress" :value="loadProgress.completed" :max="loadProgress.total || 1" :aria-hidden="loadProgress.total === 0" aria-label="已加载的资源组"></progress>
         </template>
       </div>
     </Transition>
@@ -210,6 +210,7 @@ const telemetry = shallowRef<DriveSnapshot>({
   elapsed: 0, checkpoints: 0, lapComplete: false, braking: false
 })
 
+const brandIconUrl = `${import.meta.env.BASE_URL}su7-icon.svg`
 const routeLength = (coastRoute.length / 1000).toFixed(2)
 const loadingMessage = computed(() => {
   const { completed, total } = loadProgress.value

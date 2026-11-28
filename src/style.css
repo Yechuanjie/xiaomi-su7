@@ -32,27 +32,7 @@ h1, h2, p { margin: 0; }
   gap: 18px;
 }
 .brand { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
-.brand-emblem {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: var(--accent);
-}
-.brand-emblem::before, .brand-emblem::after, .brand-emblem i {
-  content: "";
-  position: absolute;
-  width: 2px;
-  height: 16px;
-  border-radius: 2px;
-  background: #283519;
-  transform: rotate(24deg);
-}
-.brand-emblem::before { left: 10px; }
-.brand-emblem::after { right: 10px; }
-.brand-emblem i { height: 12px; background: linear-gradient(#283519 35%, transparent 35% 60%, #283519 60%); }
+.brand-emblem { width: 32px; height: 32px; }
 .brand-name { font-size: 21px; font-weight: 850; letter-spacing: -0.06em; line-height: 1; }
 .brand-name b { margin-left: 4px; font-size: 12px; letter-spacing: 0.14em; color: #b2bd97; font-weight: 680; }
 .mode-picker { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: #191d17; gap: 3px; }
@@ -292,10 +272,12 @@ h1, h2, p { margin: 0; }
 .loading-screen {
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto 44px;
   align-items: center;
-  justify-content: center;
+  align-content: center;
+  justify-items: center;
   gap: 16px;
   padding: 24px;
   background: #000;
@@ -305,9 +287,18 @@ h1, h2, p { margin: 0; }
 }
 .loading-screen-leave-active { transition: opacity 0.4s ease; pointer-events: none; }
 .loading-screen-leave-to { opacity: 0; }
-.loading-brand { font-size: 1.875rem; letter-spacing: 0.1em; white-space: pre; }
+.loading-brand { width: 100%; font-size: 1.875rem; letter-spacing: 0.1em; white-space: pre; }
 .loading-brand span { animation: loading-letter 1.5s calc(var(--letter) * 0.2s) alternate infinite; }
-.loading-message { color: #bfc4b8; font-size: 13px; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.loading-message {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 3.2em;
+  color: #bfc4b8;
+  font-size: 13px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
 .loading-progress { width: min(208px, 68vw); height: 5px; appearance: none; border: none; border-radius: 5px; background: #ffffff26; accent-color: var(--accent); }
 .loading-progress::-webkit-progress-bar { border-radius: 5px; background: #ffffff26; }
 .loading-progress::-webkit-progress-value { border-radius: 5px; background: var(--accent); transition: width 0.2s ease; }
@@ -376,7 +367,21 @@ kbd {
   .scene { min-height: 505px; }
   .touch-controls { position: absolute; left: 12px; right: 12px; bottom: 11px; display: flex; justify-content: space-between; pointer-events: none; }
   .touch-controls > div { display: flex; gap: 7px; pointer-events: auto; }
-  .touch-controls button { width: 42px; height: 40px; padding: 0; border: 1px solid #dfedc93f; border-radius: 8px; touch-action: none; background: #1d271cd9; font-size: 22px; line-height: 1; font-weight: 690; }
+  .touch-controls button {
+    width: 42px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid #dfedc93f;
+    border-radius: 8px;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    background: #1d271cd9;
+    font-size: 22px;
+    line-height: 1;
+    font-weight: 690;
+  }
   .touch-controls .touch-throttle, .touch-controls button.touch-held { background: var(--accent); color: #172311; }
   .speed-hud, .route-hud { bottom: 62px; }
 }
@@ -385,9 +390,7 @@ kbd {
   :root { --layout: calc(100% - 24px); }
   .topbar-content { min-height: 55px; gap: 8px; }
   .brand { gap: 7px; }
-  .brand-emblem { width: 26px; height: 26px; border-radius: 7px; }
-  .brand-emblem::before { left: 7px; }
-  .brand-emblem::after { right: 7px; }
+  .brand-emblem { width: 26px; height: 26px; }
   .brand-name { font-size: 18px; }
   .brand-name b { display: none; }
   .mode-picker button { padding: 7px 9px; font-size: 11px; }
